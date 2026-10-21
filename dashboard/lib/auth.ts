@@ -64,7 +64,7 @@ export async function getSession(req?: Request): Promise<SessionUser | null> {
     if (authHeader?.startsWith("Bearer ")) {
       token = authHeader.substring(7).trim();
     }
-    if (!token) {
+    if (!token && req.url && req.url.includes("/api/accounts/live")) {
       try {
         const url = new URL(req.url);
         const queryToken = url.searchParams.get("token");

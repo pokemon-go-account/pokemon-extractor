@@ -123,8 +123,8 @@ function parseTelegramText(text: string): ParsedHit[] {
 
 export async function POST(req: Request) {
   const session = await getSession(req);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  if (!session || session.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden: Administrator privileges required." }, { status: 403 });
   }
 
   if (!isMongoConfigured()) {
