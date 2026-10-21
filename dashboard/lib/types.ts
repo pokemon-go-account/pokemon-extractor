@@ -16,6 +16,14 @@ export interface ExtractedAccount {
   source?: "live_checker" | "telegram_sync" | "json_import";
   extractedAt?: string;
   updatedAt?: string;
+
+  // Review & Verification Fields
+  isChecked?: boolean;
+  isLiked?: boolean;
+  reviewNote?: string;
+  reviewStatus?: "verified" | "high_value" | "flagged" | "dead" | string;
+  reviewedAt?: string;
+  reviewedBy?: string;
 }
 
 export interface DashboardMetrics {
@@ -40,6 +48,7 @@ export interface FilterOptions {
   spenderStatus: "all" | "spenders" | "first_time" | "unknown";
   team: "all" | "mystic" | "valor" | "instinct" | "none";
   sortBy: "newest" | "level_desc" | "coins_desc" | "stardust_desc";
+  reviewFilter?: "all" | "checked" | "liked" | "unreviewed";
   page: number;
   limit: number;
 }

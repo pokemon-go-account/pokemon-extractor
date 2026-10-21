@@ -52,6 +52,7 @@ export default function DashboardPage() {
     spenderStatus: "all",
     team: "all",
     sortBy: "newest",
+    reviewFilter: "all",
     page: 1,
     limit: 50,
   });
@@ -104,6 +105,7 @@ export default function DashboardPage() {
         spenderStatus: filters.spenderStatus,
         team: filters.team,
         sortBy: filters.sortBy,
+        reviewFilter: filters.reviewFilter || "all",
         page: String(filters.page),
         limit: String(filters.limit),
       });
@@ -138,6 +140,12 @@ export default function DashboardPage() {
       fetchAccounts();
     }
   }, [user, fetchAccounts]);
+
+  const handleAccountUpdate = (updated: ExtractedAccount) => {
+    setAccounts((prev) =>
+      prev.map((acc) => (acc.email.toLowerCase() === updated.email.toLowerCase() ? updated : acc))
+    );
+  };
 
   const handleLogout = async () => {
     try {
@@ -402,7 +410,11 @@ export default function DashboardPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <AnimatePresence>
                   {accounts.map((acc) => (
-                    <AccountCard key={acc._id || acc.email} account={acc} />
+                    <AccountCard
+                      key={acc._id || acc.email}
+                      account={acc}
+                      onAccountUpdate={handleAccountUpdate}
+                    />
                   ))}
                 </AnimatePresence>
               </div>

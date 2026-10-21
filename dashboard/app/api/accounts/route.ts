@@ -42,6 +42,12 @@ function getLocalFallbackAccounts(): ExtractedAccount[] {
     error: (item.error as string) || null,
     source: "json_import",
     extractedAt: String(item.extractedAt || new Date().toISOString()),
+    isChecked: Boolean(item.isChecked),
+    isLiked: Boolean(item.isLiked),
+    reviewNote: String(item.reviewNote || ""),
+    reviewStatus: String(item.reviewStatus || ""),
+    reviewedAt: item.reviewedAt ? String(item.reviewedAt) : undefined,
+    reviewedBy: String(item.reviewedBy || ""),
   }));
 }
 
@@ -57,6 +63,7 @@ export async function GET(req: Request) {
   const spenderStatus = searchParams.get("spenderStatus") || "all";
   const team = searchParams.get("team") || "all";
   const sortBy = searchParams.get("sortBy") || "newest";
+  const reviewFilter = searchParams.get("reviewFilter") || "all";
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
   const limit = Math.min(200, Math.max(1, parseInt(searchParams.get("limit") || "40", 10)));
   const since = searchParams.get("since");
@@ -112,6 +119,14 @@ export async function GET(req: Request) {
         }
       }
 
+      if (reviewFilter === "checked") {
+        query.isChecked = true;
+      } else if (reviewFilter === "liked") {
+        query.isLiked = true;
+      } else if (reviewFilter === "unreviewed") {
+        query.isChecked = { $ne: true };
+      }
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let sortConfig: Record<string, any> = { extractedAt: -1 };
       if (sortBy === "level_desc") {
@@ -148,6 +163,12 @@ export async function GET(req: Request) {
         error: d.error,
         source: d.source || "live_checker",
         extractedAt: d.extractedAt ? new Date(d.extractedAt).toISOString() : undefined,
+        isChecked: Boolean(d.isChecked),
+        isLiked: Boolean(d.isLiked),
+        reviewNote: d.reviewNote || "",
+        reviewStatus: d.reviewStatus || "",
+        reviewedAt: d.reviewedAt ? new Date(d.reviewedAt).toISOString() : undefined,
+        reviewedBy: d.reviewedBy || "",
       }));
 
       // Calculate global metrics from database
@@ -253,6 +274,10 @@ export async function GET(req: Request) {
       if (team === "none" && (t !== "none" && t !== "0" && t !== "")) return false;
       if (team !== "none" && !t.includes(team)) return false;
     }
+
+    if (reviewFilter === "checked" && acc.isChecked !== true) return false;
+    if (reviewFilter === "liked" && acc.isLiked !== true) return false;
+    if (reviewFilter === "unreviewed" && acc.isChecked === true) return false;
 
     return true;
   });

@@ -9,6 +9,8 @@ import {
   ArrowUpDown,
   Download,
   FileSpreadsheet,
+  Heart,
+  CheckCircle2,
 } from "lucide-react";
 
 interface FilterToolbarProps {
@@ -198,6 +200,40 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
               {tm.label}
             </button>
           ))}
+        </div>
+
+        {/* Review & Checked Status Filter */}
+        <div className="flex items-center gap-1 bg-[#0a0c12] p-0.5 rounded-lg border border-white/[0.06]">
+          {[
+            { id: "all", label: "All Status" },
+            { id: "checked", label: "Checked", icon: CheckCircle2, activeColor: "bg-emerald-600 text-white shadow-sm" },
+            { id: "liked", label: "Liked", icon: Heart, activeColor: "bg-rose-600 text-white shadow-sm" },
+            { id: "unreviewed", label: "Unreviewed" },
+          ].map((rv) => {
+            const Icon = rv.icon;
+            const isSelected = (filters.reviewFilter || "all") === rv.id;
+            return (
+              <button
+                key={rv.id}
+                type="button"
+                onClick={() =>
+                  onChange({
+                    ...filters,
+                    reviewFilter: rv.id as FilterOptions["reviewFilter"],
+                    page: 1,
+                  })
+                }
+                className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1 transition-all ${
+                  isSelected
+                    ? rv.activeColor || "bg-indigo-600 text-white shadow-sm"
+                    : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+                }`}
+              >
+                {Icon && <Icon className={`w-3 h-3 ${isSelected && rv.id === 'liked' ? 'fill-white' : ''}`} />}
+                <span>{rv.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Results Counter */}

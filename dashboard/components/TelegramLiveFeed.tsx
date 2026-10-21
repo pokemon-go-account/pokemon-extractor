@@ -20,8 +20,12 @@ import {
   Send,
   RefreshCw,
   Loader2,
+  Heart,
+  CheckCircle2,
+  Edit3,
 } from "lucide-react";
 import { ExtractedAccount, FilterOptions } from "@/lib/types";
+import { ReviewModal } from "./ReviewModal";
 
 interface TelegramLiveFeedProps {
   initialAccounts: ExtractedAccount[];
@@ -44,6 +48,7 @@ export const TelegramLiveFeed: React.FC<TelegramLiveFeedProps> = ({
   const [hasMoreOlder, setHasMoreOlder] = useState<boolean>(true);
   const [olderPage, setOlderPage] = useState<number>(1);
   const [liveConnected, setLiveConnected] = useState<boolean>(false);
+  const [reviewAccount, setReviewAccount] = useState<ExtractedAccount | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -96,6 +101,43 @@ export const TelegramLiveFeed: React.FC<TelegramLiveFeedProps> = ({
       }
     }
   }, [initialAccounts]);
+
+  const handleToggleLike = async (account: ExtractedAccount) => {
+    const nextLiked = !account.isLiked;
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.email.toLowerCase() === account.email.toLowerCase()
+          ? { ...m, isLiked: nextLiked }
+          : m
+      )
+    );
+
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("poke_vault_token") : null;
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      await fetch("/api/accounts/review", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          email: account.email,
+          isLiked: nextLiked,
+        }),
+      });
+    } catch { }
+  };
+
+  const handleReviewSaved = (changes: Partial<ExtractedAccount>) => {
+    if (!reviewAccount) return;
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.email.toLowerCase() === reviewAccount.email.toLowerCase()
+          ? { ...m, ...changes }
+          : m
+      )
+    );
+  };
 
   // Handle incoming new hit
   const handleIncomingHit = useCallback((hit: ExtractedAccount) => {
@@ -456,9 +498,48 @@ export const TelegramLiveFeed: React.FC<TelegramLiveFeedProps> = ({
                           BOT
                         </span>
                       </div>
-                      <div className="flex items-center gap-1.5 text-[11px] font-mono text-zinc-500">
-                        <span>{formatDate(account.extractedAt)}</span>
-                        <span>{formatTime(account.extractedAt)}</span>
+                      <div className="flex items-center gap-2">
+                        {/* Like Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleLike(account)}
+                          className={`p-1 rounded-md border transition-all ${
+                            account.isLiked
+                              ? "border-rose-500/40 bg-rose-500/15 text-rose-400"
+                              : "border-white/[0.06] bg-white/[0.02] text-zinc-500 hover:text-rose-400"
+                          }`}
+                          title={account.isLiked ? "Liked (Click to unlike)" : "Like / Favorite"}
+                        >
+                          <Heart className={`w-3 h-3 ${account.isLiked ? "fill-rose-400" : ""}`} />
+                        </button>
+
+                        {/* Checked Button / Badge */}
+                        {account.isChecked ? (
+                          <button
+                            type="button"
+                            onClick={() => setReviewAccount(account)}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border border-emerald-500/40 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 transition-all shadow-[0_0_10px_rgba(16,185,129,0.12)]"
+                            title="Checked (Click to edit review)"
+                          >
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                            <span>Checked</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setReviewAccount(account)}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium border border-white/[0.08] bg-white/[0.03] text-zinc-400 hover:text-white hover:border-emerald-500/40 hover:bg-emerald-500/10 transition-all"
+                            title="Tap Checked to review"
+                          >
+                            <Check className="w-3 h-3 text-zinc-400" />
+                            <span>Tap Checked</span>
+                          </button>
+                        )}
+
+                        <div className="flex items-center gap-1.5 text-[11px] font-mono text-zinc-500 ml-1">
+                          <span>{formatDate(account.extractedAt)}</span>
+                          <span>{formatTime(account.extractedAt)}</span>
+                        </div>
                       </div>
                     </div>
 
@@ -536,6 +617,43 @@ export const TelegramLiveFeed: React.FC<TelegramLiveFeedProps> = ({
                         </button>
                       </div>
                     </div>
+
+                    {/* Review Details Box (when checked or reviewed) */}
+                    {account.isChecked && (
+                      <div className="p-2.5 rounded-xl bg-emerald-500/[0.05] border border-emerald-500/20 text-xs mb-3 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-semibold text-emerald-400 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            {account.reviewStatus === "high_value"
+                              ? "High Value / Keep"
+                              : account.reviewStatus === "flagged"
+                              ? "Needs 2FA"
+                              : account.reviewStatus === "dead"
+                              ? "Dead / Invalid"
+                              : "Verified Working"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setReviewAccount(account)}
+                            className="text-[10px] text-zinc-400 hover:text-emerald-300 flex items-center gap-1 font-mono transition-colors"
+                          >
+                            <Edit3 className="w-2.5 h-2.5" />
+                            Edit Review
+                          </button>
+                        </div>
+                        {account.reviewNote ? (
+                          <p className="text-zinc-200 text-[11px] italic bg-black/25 p-1.5 rounded border border-white/[0.04]">
+                            "{account.reviewNote}"
+                          </p>
+                        ) : (
+                          <p className="text-zinc-400 text-[10px] italic">Verified and checked.</p>
+                        )}
+                        <div className="flex items-center justify-between text-[10px] text-zinc-500 font-mono pt-0.5">
+                          <span>By: {account.reviewedBy || "Operator"}</span>
+                          {account.reviewedAt && <span>{new Date(account.reviewedAt).toLocaleDateString()}</span>}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Stats Grid */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs mb-3">
@@ -628,6 +746,16 @@ export const TelegramLiveFeed: React.FC<TelegramLiveFeedProps> = ({
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
           )}
         </button>
+      )}
+
+      {/* Review Dialog Modal */}
+      {reviewAccount && (
+        <ReviewModal
+          isOpen={!!reviewAccount}
+          onClose={() => setReviewAccount(null)}
+          account={reviewAccount}
+          onSaved={handleReviewSaved}
+        />
       )}
     </div>
   );
